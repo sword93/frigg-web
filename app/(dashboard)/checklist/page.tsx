@@ -18,7 +18,7 @@ export default function ChecklistPage() {
 
   async function load() {
     const { data } = await sb.from('checklist_items').select('*').order('priority').order('category').order('name')
-    setRows(data || [])
+    setRows((data || []) as ChecklistItem[])
   }
 
   useEffect(() => { load() }, [])

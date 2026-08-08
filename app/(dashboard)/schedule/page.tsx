@@ -26,7 +26,7 @@ export default function SchedulePage() {
 
   async function load() {
     const { data } = await sb.from('schedules').select('*').order('event_date')
-    setRows(data || [])
+    setRows((data || []) as Schedule[])
   }
 
   useEffect(() => { load() }, [])

@@ -20,7 +20,7 @@ export default function ExpensesPage() {
     const ms = `${year}-${String(month).padStart(2,'0')}-01`
     const me = month < 12 ? `${year}-${String(month+1).padStart(2,'0')}-01` : `${year+1}-01-01`
     const { data } = await sb.from('expenses').select('*').gte('expense_date', ms).lt('expense_date', me).order('expense_date', { ascending: false })
-    setRows(data || [])
+    setRows((data || []) as Expense[])
   }
 
   useEffect(() => { load() }, [year, month])

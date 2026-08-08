@@ -19,7 +19,7 @@ export default function BudgetPage() {
 
   async function load() {
     const { data } = await sb.from('budget_items').select('*').order('cycle').order('amount_usd', { ascending: false })
-    setRows(data || [])
+    setRows((data || []) as BudgetItem[])
   }
 
   useEffect(() => { load() }, [])
