@@ -17,7 +17,7 @@ export default function DashboardPage() {
   useEffect(() => {
     const ms = `${year}-${String(month).padStart(2,'0')}-01`
     const me = month < 12 ? `${year}-${String(month+1).padStart(2,'0')}-01` : `${year+1}-01-01`
-    sb.from('expenses').select('amount_usd,amount_krw,category').gte('expense_date', ms).lt('expense_date', me).then(({ data }) => setExpenses(data || []))
+    sb.from('expenses').select('amount_usd,amount_krw,category,expense_date,name,paid_by').gte('expense_date', ms).lt('expense_date', me).then(({ data }) => setExpenses(data || []))
     sb.from('budget_items').select('*').then(({ data }) => setBudget(data || []))
     sb.from('expenses').select('expense_date,name,category,amount_usd,amount_krw,paid_by').order('expense_date', { ascending: false }).limit(5).then(({ data }) => setRecent(data || []))
   }, [year, month])
