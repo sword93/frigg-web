@@ -5,12 +5,54 @@ import { createClient } from '@/lib/supabase'
 import Link from 'next/link'
 
 const NAV = [
-  { href: '/',           icon: '🏠', label: '홈'     },
-  { href: '/expenses',   icon: '💰', label: '가계부' },
-  { href: '/budget',     icon: '📋', label: '예산'   },
-  { href: '/checklist',  icon: '✅', label: '준비물' },
-  { href: '/schedule',   icon: '📅', label: '일정'   },
+  { href: '/',           icon: HomeIcon,    label: '홈'     },
+  { href: '/expenses',   icon: WalletIcon,  label: '가계부' },
+  { href: '/budget',     icon: ListIcon,    label: '예산'   },
+  { href: '/checklist',  icon: CheckIcon,   label: '준비물' },
+  { href: '/schedule',   icon: CalIcon,     label: '일정'   },
 ]
+
+function HomeIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill={active ? '#3182f6' : 'none'} stroke={active ? '#3182f6' : '#8b95a1'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 9.5L12 3l9 6.5V20a1 1 0 01-1 1H4a1 1 0 01-1-1V9.5z"/>
+      <path d="M9 21V12h6v9"/>
+    </svg>
+  )
+}
+function WalletIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#3182f6' : '#8b95a1'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="2" y="5" width="20" height="14" rx="2"/>
+      <path d="M16 12a1 1 0 100 2 1 1 0 000-2z" fill={active ? '#3182f6' : '#8b95a1'}/>
+      <path d="M2 9h20"/>
+    </svg>
+  )
+}
+function ListIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#3182f6' : '#8b95a1'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="3" width="18" height="18" rx="3"/>
+      <path d="M7 8h10M7 12h10M7 16h6"/>
+    </svg>
+  )
+}
+function CheckIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#3182f6' : '#8b95a1'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="9"/>
+      <path d="M8 12l3 3 5-5"/>
+    </svg>
+  )
+}
+function CalIcon({ active }: { active: boolean }) {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={active ? '#3182f6' : '#8b95a1'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+      <rect x="3" y="4" width="18" height="17" rx="2"/>
+      <path d="M8 2v4M16 2v4M3 10h18"/>
+    </svg>
+  )
+}
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter()
@@ -27,30 +69,43 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (checking) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-[#f5f7fa]">
-        <div className="text-2xl animate-pulse">✈️</div>
+      <div className="min-h-screen flex items-center justify-center bg-[#f2f4f6]">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-[#3182f6] flex items-center justify-center">
+            <span className="text-white text-lg">✈</span>
+          </div>
+          <div className="flex gap-1">
+            {[0,1,2].map(i => (
+              <div key={i} className="w-1.5 h-1.5 rounded-full bg-[#3182f6] animate-bounce" style={{ animationDelay: `${i*0.15}s` }} />
+            ))}
+          </div>
+        </div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-[#f5f7fa] pb-20">
+    <div className="min-h-screen bg-[#f2f4f6] pb-20">
       {/* 상단 헤더 */}
-      <header className="bg-[#1e3a5f] text-white px-4 py-3 flex items-center justify-between sticky top-0 z-10">
-        <div className="flex items-center gap-2">
-          <span className="text-lg">✈️</span>
-          <span className="font-bold text-sm">FRIGG</span>
+      <header className="bg-white sticky top-0 z-10" style={{ boxShadow: '0 1px 0 #e8eaed' }}>
+        <div className="max-w-2xl mx-auto px-4 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-[#3182f6] flex items-center justify-center">
+              <span className="text-white text-xs">✈</span>
+            </div>
+            <span className="font-bold text-[#191f28] text-base">FRIGG</span>
+          </div>
+          <button
+            onClick={async () => {
+              const sb = createClient()
+              await sb.auth.signOut()
+              router.push('/login')
+            }}
+            className="text-xs text-[#8b95a1] hover:text-[#191f28] transition-colors px-3 py-1.5 rounded-lg hover:bg-gray-100"
+          >
+            로그아웃
+          </button>
         </div>
-        <button
-          onClick={async () => {
-            const sb = createClient()
-            await sb.auth.signOut()
-            router.push('/login')
-          }}
-          className="text-xs text-white/60 hover:text-white"
-        >
-          로그아웃
-        </button>
       </header>
 
       {/* 콘텐츠 */}
@@ -59,21 +114,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       </main>
 
       {/* 하단 탭바 */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 z-10">
-        <div className="max-w-2xl mx-auto flex">
-          {NAV.map(({ href, icon, label }) => {
+      <nav className="fixed bottom-0 left-0 right-0 bg-white z-10" style={{ boxShadow: '0 -1px 0 #e8eaed' }}>
+        <div className="max-w-2xl mx-auto flex" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+          {NAV.map(({ href, icon: Icon, label }) => {
             const active = pathname === href
             return (
               <Link
                 key={href}
                 href={href}
-                className={`flex-1 flex flex-col items-center py-2 text-xs gap-0.5 transition-colors ${
-                  active ? 'text-[#1e3a5f] font-bold' : 'text-gray-400'
-                }`}
+                className="flex-1 flex flex-col items-center py-2 gap-0.5 transition-colors"
               >
-                <span className="text-lg leading-none">{icon}</span>
-                <span>{label}</span>
-                {active && <span className="w-1 h-1 rounded-full bg-[#f4a430]" />}
+                <Icon active={active} />
+                <span className={`text-[10px] font-medium ${active ? 'text-[#3182f6]' : 'text-[#8b95a1]'}`}>
+                  {label}
+                </span>
               </Link>
             )
           })}

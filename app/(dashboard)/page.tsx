@@ -4,7 +4,7 @@ import { createClient, fmtUsd, fmtKrw, usdToKrw, EXCHANGE_RATE } from '@/lib/sup
 import { Expense, BudgetItem } from '@/lib/types'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 
-const COLORS = ['#1e3a5f','#f4a430','#2ea878','#e05c5c','#7b5ea7','#4a9eda','#e87c3e']
+const COLORS = ['#3182f6','#00c73c','#f59100','#e84040','#8b5cf6','#06b6d4','#f97316']
 
 export default function DashboardPage() {
   const [expenses, setExpenses] = useState<Expense[]>([])
@@ -38,58 +38,68 @@ export default function DashboardPage() {
   function prevMonth() { if (month === 1) { setYear(y => y-1); setMonth(12) } else setMonth(m => m-1) }
   function nextMonth() { if (month === 12) { setYear(y => y+1); setMonth(1) } else setMonth(m => m+1) }
 
+  const pctColor = pct > 90 ? '#e84040' : pct > 70 ? '#f59100' : '#00c73c'
+
   return (
-    <div className="p-4 space-y-4">
-      {/* D-3 납부 알림 */}
+    <div className="px-4 py-5 space-y-4">
+
+      {/* 납부 임박 알림 */}
       {dueSoon.length > 0 && (
-        <div className="bg-orange-50 border border-orange-200 rounded-xl p-3">
-          <p className="text-xs font-bold text-orange-700 mb-1">⏰ 납부 임박</p>
+        <div className="card" style={{ background: '#fff8eb', borderLeft: '3px solid #f59100' }}>
+          <div className="flex items-center gap-2 mb-1">
+            <span style={{ color: '#f59100', fontSize: 14 }}>⏰</span>
+            <p className="text-xs font-bold" style={{ color: '#b36800' }}>납부 임박</p>
+          </div>
           {dueSoon.map(b => (
-            <p key={b.id} className="text-xs text-orange-600">{b.due_day}일 · {b.name} · {fmtUsd(b.amount_usd)}</p>
+            <p key={b.id} className="text-xs" style={{ color: '#b36800' }}>{b.due_day}일 · {b.name} · {fmtUsd(b.amount_usd)}</p>
           ))}
         </div>
       )}
 
       {/* 월 선택 */}
       <div className="flex items-center justify-between">
-        <button onClick={prevMonth} className="btn-ghost px-3 py-1">‹</button>
-        <h2 className="font-bold text-[#1e3a5f]">{year}년 {month}월</h2>
-        <button onClick={nextMonth} className="btn-ghost px-3 py-1">›</button>
+        <button onClick={prevMonth} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white text-gray-500 text-lg font-bold" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>‹</button>
+        <span className="font-bold text-[#191f28] text-base">{year}년 {month}월</span>
+        <button onClick={nextMonth} className="w-9 h-9 flex items-center justify-center rounded-xl bg-white text-gray-500 text-lg font-bold" style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}>›</button>
       </div>
 
-      {/* 지표 카드 */}
+      {/* 메인 지출 요약 카드 */}
+      <div className="card" style={{ background: '#3182f6' }}>
+        <p className="text-xs font-medium mb-1" style={{ color: 'rgba(255,255,255,0.7)' }}>이번 달 지출</p>
+        <p className="text-3xl font-bold text-white mb-0.5">{fmtUsd(totalSpent)}</p>
+        <p className="text-sm" style={{ color: 'rgba(255,255,255,0.8)' }}>{fmtKrw(usdToKrw(totalSpent))}</p>
+        <div className="mt-3 bg-white/20 rounded-full h-1.5">
+          <div className="bg-white h-1.5 rounded-full transition-all" style={{ width: `${Math.min(pct, 100)}%` }} />
+        </div>
+        <div className="flex justify-between mt-1.5">
+          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>예산 {pct}% 사용</span>
+          <span className="text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>/ {fmtUsd(totalBudget)}</span>
+        </div>
+      </div>
+
+      {/* 보조 지표 */}
       <div className="grid grid-cols-2 gap-3">
         <div className="card">
-          <p className="text-xs text-gray-400">이번 달 지출</p>
-          <p className="text-lg font-bold text-[#1e3a5f]">{fmtUsd(totalSpent)}</p>
-          <p className="text-xs text-gray-400">{fmtKrw(usdToKrw(totalSpent))}</p>
+          <p className="text-xs text-[#8b95a1] mb-1">잔여 예산</p>
+          <p className="text-xl font-bold" style={{ color: remain >= 0 ? '#00c73c' : '#e84040' }}>{fmtUsd(remain)}</p>
+          <p className="text-xs text-[#8b95a1] mt-0.5">{fmtKrw(usdToKrw(Math.abs(remain)))}</p>
         </div>
         <div className="card">
-          <p className="text-xs text-gray-400">월 예산 합계</p>
-          <p className="text-lg font-bold text-[#1e3a5f]">{fmtUsd(totalBudget)}</p>
-          <p className="text-xs text-gray-400">{fmtKrw(usdToKrw(totalBudget))}</p>
-        </div>
-        <div className="card">
-          <p className="text-xs text-gray-400">잔여 예산</p>
-          <p className={`text-lg font-bold ${remain >= 0 ? 'text-green-600' : 'text-red-500'}`}>{fmtUsd(remain)}</p>
-          <p className="text-xs text-gray-400">{fmtKrw(usdToKrw(Math.abs(remain)))}</p>
-        </div>
-        <div className="card">
-          <p className="text-xs text-gray-400">예산 소진율</p>
-          <p className={`text-lg font-bold ${pct > 90 ? 'text-red-500' : pct > 70 ? 'text-orange-500' : 'text-green-600'}`}>{pct}%</p>
-          <div className="w-full bg-gray-100 rounded-full h-1.5 mt-1">
-            <div className="bg-[#f4a430] h-1.5 rounded-full" style={{ width: `${Math.min(pct, 100)}%` }} />
-          </div>
+          <p className="text-xs text-[#8b95a1] mb-1">소진율</p>
+          <p className="text-xl font-bold" style={{ color: pctColor }}>{pct}%</p>
+          <p className="text-xs text-[#8b95a1] mt-0.5">{remain >= 0 ? `$${remain.toFixed(0)} 남음` : '예산 초과'}</p>
         </div>
       </div>
 
-      {/* 파이 차트 */}
+      {/* 카테고리 파이차트 */}
       {pieData.length > 0 && (
         <div className="card">
           <p className="section-title">카테고리별 지출</p>
           <ResponsiveContainer width="100%" height={180}>
             <PieChart>
-              <Pie data={pieData} cx="50%" cy="50%" outerRadius={70} dataKey="value" label={({ name, percent }) => `${name} ${(percent*100).toFixed(0)}%`} labelLine={false} fontSize={10}>
+              <Pie data={pieData} cx="50%" cy="50%" outerRadius={70} dataKey="value"
+                label={({ name, percent }) => `${name} ${(percent*100).toFixed(0)}%`}
+                labelLine={false} fontSize={10}>
                 {pieData.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
               </Pie>
               <Tooltip formatter={(v: number) => fmtUsd(v)} />
@@ -99,45 +109,67 @@ export default function DashboardPage() {
       )}
 
       {/* 납부 예정 */}
-      <div className="card">
-        <p className="section-title">⏰ 이번 달 납부 예정</p>
-        <div className="space-y-2">
-          {monthly.filter(b => b.due_day).sort((a, b) => (a.due_day||0) - (b.due_day||0)).map(b => (
-            <div key={b.id} className="flex justify-between items-center">
-              <div className="flex items-center gap-2">
-                <span className="text-sm">{today.getDate() > (b.due_day||0) ? '✅' : '⏰'}</span>
-                <div>
-                  <p className="text-sm font-medium">{b.name}</p>
-                  <p className="text-xs text-gray-400">{b.due_day}일</p>
+      {monthly.filter(b => b.due_day).length > 0 && (
+        <div className="card">
+          <p className="section-title">이번 달 납부 예정</p>
+          <div className="space-y-3">
+            {monthly.filter(b => b.due_day).sort((a, b) => (a.due_day||0) - (b.due_day||0)).map(b => {
+              const done = today.getDate() > (b.due_day||0)
+              return (
+                <div key={b.id} className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold ${done ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'}`}>
+                      {done ? '✓' : b.due_day}
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-[#191f28]">{b.name}</p>
+                      <p className="text-xs text-[#8b95a1]">{done ? '납부 완료' : `${b.due_day}일 예정`}</p>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-[#191f28]">{fmtUsd(b.amount_usd)}</p>
+                    <p className="text-xs text-[#8b95a1]">{fmtKrw(b.amount_krw)}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="text-right">
-                <p className="text-sm font-bold text-[#1e3a5f]">{fmtUsd(b.amount_usd)}</p>
-                <p className="text-xs text-gray-400">{fmtKrw(b.amount_krw)}</p>
-              </div>
-            </div>
-          ))}
+              )
+            })}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* 최근 지출 */}
       <div className="card">
         <p className="section-title">최근 지출</p>
-        <div className="space-y-2">
-          {recent.map(e => (
-            <div key={e.id} className="flex justify-between items-center py-1 border-b border-gray-50 last:border-0">
-              <div>
-                <p className="text-sm font-medium">{e.name}</p>
-                <p className="text-xs text-gray-400">{e.expense_date} · {e.category} · {e.paid_by}</p>
+        {recent.length === 0 ? (
+          <p className="text-sm text-[#8b95a1] text-center py-4">지출 내역이 없어요</p>
+        ) : (
+          <div className="space-y-3">
+            {recent.map(e => (
+              <div key={e.id} className="flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-xl bg-[#ebf3fe] flex items-center justify-center">
+                    <span className="text-xs">{catIcon(e.category)}</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-[#191f28]">{e.name}</p>
+                    <p className="text-xs text-[#8b95a1]">{e.expense_date} · {e.category}</p>
+                  </div>
+                </div>
+                <p className="text-sm font-bold text-[#191f28]">{fmtUsd(e.amount_usd)}</p>
               </div>
-              <p className="text-sm font-bold text-[#1e3a5f]">{fmtUsd(e.amount_usd)}</p>
-            </div>
-          ))}
-          {recent.length === 0 && <p className="text-sm text-gray-400 text-center py-2">지출 내역이 없어요</p>}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
-      <p className="text-center text-xs text-gray-300 pb-2">환율 $1 = ₩{EXCHANGE_RATE.toLocaleString()}</p>
+      <p className="text-center text-xs text-[#8b95a1] pb-2">환율 $1 = ₩{EXCHANGE_RATE.toLocaleString()}</p>
     </div>
   )
+}
+
+function catIcon(cat: string) {
+  const m: Record<string, string> = {
+    '식비':'🍽','주거':'🏠','교통':'🚌','보험':'🛡','학업':'📚','의료':'💊','통신':'📱','여행':'✈','의류':'👕','생활':'🛒','기타':'📌'
+  }
+  return m[cat] || '💳'
 }

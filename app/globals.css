@@ -3,36 +3,71 @@
 @tailwind utilities;
 
 :root {
-  --primary: #1e3a5f;
-  --accent: #f4a430;
-  --bg: #f5f7fa;
+  --blue: #3182f6;
+  --blue-light: #ebf3fe;
+  --dark: #191f28;
+  --gray: #8b95a1;
+  --gray-light: #f2f4f6;
+  --green: #00c73c;
+  --red: #e84040;
+  --orange: #f59100;
 }
 
+* { -webkit-tap-highlight-color: transparent; }
+
 body {
-  background-color: var(--bg);
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+  background-color: #f2f4f6;
+  font-family: -apple-system, BlinkMacSystemFont, 'Pretendard', 'Noto Sans KR', 'Segoe UI', sans-serif;
+  color: #191f28;
+  -webkit-font-smoothing: antialiased;
 }
 
 @layer components {
   .card {
-    @apply bg-white rounded-2xl shadow-sm border border-gray-100 p-4;
+    @apply bg-white rounded-2xl p-4;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .card-flat {
+    @apply bg-white rounded-2xl p-4 border border-gray-100;
   }
   .btn-primary {
-    @apply bg-[#1e3a5f] text-white rounded-xl px-4 py-2 font-semibold text-sm active:opacity-80;
-  }
-  .btn-accent {
-    @apply bg-[#f4a430] text-white rounded-xl px-4 py-2 font-semibold text-sm active:opacity-80;
+    @apply rounded-xl px-4 py-3 font-semibold text-sm text-white active:scale-95 transition-transform;
+    background: var(--blue);
   }
   .btn-ghost {
-    @apply bg-gray-100 text-gray-700 rounded-xl px-4 py-2 font-semibold text-sm active:opacity-80;
+    @apply bg-gray-100 text-gray-600 rounded-xl px-4 py-2 font-medium text-sm active:bg-gray-200 transition-colors;
+  }
+  .btn-outline {
+    @apply rounded-xl px-4 py-2 font-medium text-sm border border-gray-200 bg-white active:bg-gray-50 transition-colors;
+    color: var(--dark);
   }
   .section-title {
-    @apply text-sm font-bold text-[#1e3a5f] border-l-4 border-[#f4a430] pl-2 mb-3;
+    @apply text-sm font-bold mb-3;
+    color: var(--dark);
   }
   .input {
-    @apply w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/30;
+    @apply w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-gray-50 focus:outline-none focus:bg-white transition-colors;
+    color: var(--dark);
+  }
+  .input:focus {
+    border-color: var(--blue);
+    box-shadow: 0 0 0 3px rgba(49,130,246,0.12);
   }
   .select {
-    @apply w-full border border-gray-200 rounded-xl px-3 py-2 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-[#1e3a5f]/30;
+    @apply w-full border border-gray-200 rounded-xl px-3 py-2.5 text-sm bg-gray-50 focus:outline-none transition-colors;
+    color: var(--dark);
   }
+  .select:focus {
+    border-color: var(--blue);
+    background: white;
+    box-shadow: 0 0 0 3px rgba(49,130,246,0.12);
+  }
+  .badge {
+    @apply inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium;
+  }
+  .badge-blue { background: var(--blue-light); color: var(--blue); }
+  .badge-green { background: #e6faf0; color: #00a63c; }
+  .badge-red { background: #fff0f0; color: var(--red); }
+  .badge-orange { background: #fff8eb; color: var(--orange); }
+  .badge-gray { @apply bg-gray-100 text-gray-500; }
 }
