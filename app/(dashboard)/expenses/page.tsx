@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { createClient, fmtUsd, fmtKrw, usdToKrw } from '@/lib/supabase'
 import { Expense, CATEGORIES, PAY_METHODS } from '@/lib/types'
+import ConfirmDialog from '@/components/ConfirmDialog'
 
 const EMPTY: Partial<Expense> = { name: '', category: '식비', amount_usd: 0, paid_by: '아빠', expense_date: new Date().toISOString().slice(0,10) }
 
@@ -19,12 +20,19 @@ export default function ExpensesPage() {
   const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(false)
   const [filterCat, setFilterCat] = useState<string>('전체')
+  const [error, setError] = useState<string | null>(null)
+  const [confirmId, setConfirmId] = useState<string | null>(null)
 
   async function load() {
-    const ms = `${year}-${String(month).padStart(2,'0')}-01`
-    const me = month < 12 ? `${year}-${String(month+1).padStart(2,'0')}-01` : `${year+1}-01-01`
-    const { data } = await sb.from('expenses').select('*').gte('expense_date', ms).lt('expense_date', me).order('expense_date', { ascending: false })
-    setRows((data || []) as Expense[])
+    try {
+      const ms = `${year}-${String(month).padStart(2,'0')}-01`
+      const me = month < 12 ? `${year}-${String(month+1).padStart(2,'0')}-01` : `${year+1}-01-01`
+      const { data, error: err } = await sb.from('expenses').select('*').gte('expense_date', ms).lt('expense_date', me).order('expense_date', { ascending: false })
+      if (err) throw err
+      setRows((data || []) as Expense[])
+    } catch {
+      setError('지출 목록을 불러오는 데 실패했어요.')
+    }
   }
 
   useEffect(() => { load() }, [year, month])
@@ -32,23 +40,37 @@ export default function ExpensesPage() {
   async function save() {
     if (!form.name || !form.amount_usd) return
     setLoading(true)
-    const payload = { ...form, amount_krw: usdToKrw(form.amount_usd || 0) }
-    if (editId) {
-      await sb.from('expenses').update(payload).eq('id', editId)
-    } else {
-      await sb.from('expenses').insert(payload)
+    try {
+      const payload = { ...form, amount_krw: usdToKrw(form.amount_usd || 0) }
+      if (editId) {
+        const { error: err } = await sb.from('expenses').update(payload).eq('id', editId)
+        if (err) throw err
+      } else {
+        const { error: err } = await sb.from('expenses').insert(payload)
+        if (err) throw err
+      }
+      setShowForm(false)
+      setEditId(null)
+      setForm(EMPTY)
+      await load()
+    } catch {
+      setError('저장에 실패했어요. 다시 시도해 주세요.')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
-    setShowForm(false)
-    setEditId(null)
-    setForm(EMPTY)
-    load()
   }
 
-  async function del(id: string) {
-    if (!confirm('삭제할까요?')) return
-    await sb.from('expenses').delete().eq('id', id)
-    load()
+  async function doDelete() {
+    if (!confirmId) return
+    try {
+      const { error: err } = await sb.from('expenses').delete().eq('id', confirmId)
+      if (err) throw err
+      await load()
+    } catch {
+      setError('삭제에 실패했어요. 다시 시도해 주세요.')
+    } finally {
+      setConfirmId(null)
+    }
   }
 
   function startEdit(e: Expense) {
@@ -65,6 +87,16 @@ export default function ExpensesPage() {
 
   return (
     <div className="px-4 py-5 space-y-4">
+
+      {/* 에러 배너 */}
+      {error && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-xl"
+          style={{ background: '#fff0f0', border: '1px solid #fecaca' }}>
+          <span style={{ color: '#e84040', fontSize: 14 }}>⚠️</span>
+          <p className="text-sm flex-1" style={{ color: '#b91c1c' }}>{error}</p>
+          <button onClick={() => setError(null)} className="text-xs font-bold" style={{ color: '#b91c1c' }}>✕</button>
+        </div>
+      )}
 
       {/* 월 선택 + 추가 버튼 */}
       <div className="flex items-center justify-between">
@@ -129,7 +161,7 @@ export default function ExpensesPage() {
             </div>
             <div className="flex gap-3 mt-3 pt-3 border-t border-gray-100">
               <button onClick={() => startEdit(e)} className="text-xs font-semibold" style={{ color: '#3182f6' }}>수정</button>
-              <button onClick={() => del(e.id!)} className="text-xs font-semibold" style={{ color: '#e84040' }}>삭제</button>
+              <button onClick={() => setConfirmId(e.id!)} className="text-xs font-semibold" style={{ color: '#e84040' }}>삭제</button>
             </div>
           </div>
         ))}
@@ -201,6 +233,14 @@ export default function ExpensesPage() {
           </div>
         </div>
       )}
+
+      {/* 삭제 확인 다이얼로그 */}
+      <ConfirmDialog
+        open={confirmId !== null}
+        message="이 지출 항목을 삭제할까요?"
+        onConfirm={doDelete}
+        onCancel={() => setConfirmId(null)}
+      />
     </div>
   )
 }

@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { Schedule } from '@/lib/types'
+import ConfirmDialog from '@/components/ConfirmDialog'
 
 const SCHEDULE_CATS = ['전체','출국준비','도착정착','학사일정','월별납부','기타']
 const EMPTY: Partial<Schedule> = { title: '', category: '기타', event_date: new Date().toISOString().slice(0,10), is_done: false }
@@ -23,38 +24,64 @@ export default function SchedulePage() {
   const [loading, setLoading] = useState(false)
   const [filterCat, setFilterCat] = useState('전체')
   const [showPast, setShowPast] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [confirmId, setConfirmId] = useState<string | null>(null)
 
   async function load() {
-    const { data } = await sb.from('schedules').select('*').order('event_date')
-    setRows((data || []) as Schedule[])
+    try {
+      const { data, error: err } = await sb.from('schedules').select('*').order('event_date')
+      if (err) throw err
+      setRows((data || []) as Schedule[])
+    } catch {
+      setError('일정을 불러오는 데 실패했어요.')
+    }
   }
 
   useEffect(() => { load() }, [])
 
   async function toggleDone(item: Schedule) {
-    await sb.from('schedules').update({ is_done: !item.is_done }).eq('id', item.id!)
-    setRows(prev => prev.map(r => r.id === item.id ? { ...r, is_done: !r.is_done } : r))
+    try {
+      const { error: err } = await sb.from('schedules').update({ is_done: !item.is_done }).eq('id', item.id!)
+      if (err) throw err
+      setRows(prev => prev.map(r => r.id === item.id ? { ...r, is_done: !r.is_done } : r))
+    } catch {
+      setError('상태 변경에 실패했어요.')
+    }
   }
 
   async function save() {
     if (!form.title || !form.event_date) return
     setLoading(true)
-    if (editId) {
-      await sb.from('schedules').update(form).eq('id', editId)
-    } else {
-      await sb.from('schedules').insert(form)
+    try {
+      if (editId) {
+        const { error: err } = await sb.from('schedules').update(form).eq('id', editId)
+        if (err) throw err
+      } else {
+        const { error: err } = await sb.from('schedules').insert(form)
+        if (err) throw err
+      }
+      setShowForm(false)
+      setEditId(null)
+      setForm(EMPTY)
+      await load()
+    } catch {
+      setError('저장에 실패했어요. 다시 시도해 주세요.')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
-    setShowForm(false)
-    setEditId(null)
-    setForm(EMPTY)
-    load()
   }
 
-  async function del(id: string) {
-    if (!confirm('삭제할까요?')) return
-    await sb.from('schedules').delete().eq('id', id)
-    load()
+  async function doDelete() {
+    if (!confirmId) return
+    try {
+      const { error: err } = await sb.from('schedules').delete().eq('id', confirmId)
+      if (err) throw err
+      await load()
+    } catch {
+      setError('삭제에 실패했어요. 다시 시도해 주세요.')
+    } finally {
+      setConfirmId(null)
+    }
   }
 
   function startEdit(s: Schedule) { setForm(s); setEditId(s.id!); setShowForm(true) }
@@ -67,6 +94,16 @@ export default function SchedulePage() {
 
   return (
     <div className="px-4 py-5 space-y-4">
+
+      {/* 에러 배너 */}
+      {error && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-xl"
+          style={{ background: '#fff0f0', border: '1px solid #fecaca' }}>
+          <span style={{ color: '#e84040', fontSize: 14 }}>⚠️</span>
+          <p className="text-sm flex-1" style={{ color: '#b91c1c' }}>{error}</p>
+          <button onClick={() => setError(null)} className="text-xs font-bold" style={{ color: '#b91c1c' }}>✕</button>
+        </div>
+      )}
 
       {/* 상단 */}
       <div className="flex justify-between items-center">
@@ -165,7 +202,7 @@ export default function SchedulePage() {
                 </div>
                 <div className="flex gap-3 flex-shrink-0">
                   <button onClick={() => startEdit(item)} className="text-xs font-semibold" style={{ color: '#3182f6' }}>수정</button>
-                  <button onClick={() => del(item.id!)} className="text-xs font-semibold" style={{ color: '#e84040' }}>삭제</button>
+                  <button onClick={() => setConfirmId(item.id!)} className="text-xs font-semibold" style={{ color: '#e84040' }}>삭제</button>
                 </div>
               </div>
             </div>
@@ -222,6 +259,14 @@ export default function SchedulePage() {
           </div>
         </div>
       )}
+
+      {/* 삭제 확인 다이얼로그 */}
+      <ConfirmDialog
+        open={confirmId !== null}
+        message="이 일정을 삭제할까요?"
+        onConfirm={doDelete}
+        onCancel={() => setConfirmId(null)}
+      />
     </div>
   )
 }

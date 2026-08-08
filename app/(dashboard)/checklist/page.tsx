@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { ChecklistItem } from '@/lib/types'
+import ConfirmDialog from '@/components/ConfirmDialog'
 
 const CHECKLIST_CATS = ['전체','서류','금융','의류','전자기기','주방','욕실','건강','생활','학업']
 const EMPTY: Partial<ChecklistItem> = { name: '', category: '생활', priority: '중', notes: '', is_done: false }
@@ -17,38 +18,64 @@ export default function ChecklistPage() {
   const [loading, setLoading] = useState(false)
   const [filterCat, setFilterCat] = useState('전체')
   const [showDone, setShowDone] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [confirmId, setConfirmId] = useState<string | null>(null)
 
   async function load() {
-    const { data } = await sb.from('checklist_items').select('*').order('priority').order('category').order('name')
-    setRows((data || []) as ChecklistItem[])
+    try {
+      const { data, error: err } = await sb.from('checklist_items').select('*').order('priority').order('category').order('name')
+      if (err) throw err
+      setRows((data || []) as ChecklistItem[])
+    } catch {
+      setError('체크리스트를 불러오는 데 실패했어요.')
+    }
   }
 
   useEffect(() => { load() }, [])
 
   async function toggleDone(item: ChecklistItem) {
-    await sb.from('checklist_items').update({ is_done: !item.is_done }).eq('id', item.id!)
-    setRows(prev => prev.map(r => r.id === item.id ? { ...r, is_done: !r.is_done } : r))
+    try {
+      const { error: err } = await sb.from('checklist_items').update({ is_done: !item.is_done }).eq('id', item.id!)
+      if (err) throw err
+      setRows(prev => prev.map(r => r.id === item.id ? { ...r, is_done: !r.is_done } : r))
+    } catch {
+      setError('상태 변경에 실패했어요.')
+    }
   }
 
   async function save() {
     if (!form.name) return
     setLoading(true)
-    if (editId) {
-      await sb.from('checklist_items').update(form).eq('id', editId)
-    } else {
-      await sb.from('checklist_items').insert(form)
+    try {
+      if (editId) {
+        const { error: err } = await sb.from('checklist_items').update(form).eq('id', editId)
+        if (err) throw err
+      } else {
+        const { error: err } = await sb.from('checklist_items').insert(form)
+        if (err) throw err
+      }
+      setShowForm(false)
+      setEditId(null)
+      setForm(EMPTY)
+      await load()
+    } catch {
+      setError('저장에 실패했어요. 다시 시도해 주세요.')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
-    setShowForm(false)
-    setEditId(null)
-    setForm(EMPTY)
-    load()
   }
 
-  async function del(id: string) {
-    if (!confirm('삭제할까요?')) return
-    await sb.from('checklist_items').delete().eq('id', id)
-    load()
+  async function doDelete() {
+    if (!confirmId) return
+    try {
+      const { error: err } = await sb.from('checklist_items').delete().eq('id', confirmId)
+      if (err) throw err
+      await load()
+    } catch {
+      setError('삭제에 실패했어요. 다시 시도해 주세요.')
+    } finally {
+      setConfirmId(null)
+    }
   }
 
   function startEdit(c: ChecklistItem) { setForm(c); setEditId(c.id!); setShowForm(true) }
@@ -61,6 +88,16 @@ export default function ChecklistPage() {
 
   return (
     <div className="px-4 py-5 space-y-4">
+
+      {/* 에러 배너 */}
+      {error && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-xl"
+          style={{ background: '#fff0f0', border: '1px solid #fecaca' }}>
+          <span style={{ color: '#e84040', fontSize: 14 }}>⚠️</span>
+          <p className="text-sm flex-1" style={{ color: '#b91c1c' }}>{error}</p>
+          <button onClick={() => setError(null)} className="text-xs font-bold" style={{ color: '#b91c1c' }}>✕</button>
+        </div>
+      )}
 
       {/* 상단 */}
       <div className="flex justify-between items-center">
@@ -147,7 +184,7 @@ export default function ChecklistPage() {
               </div>
               <div className="flex gap-3 flex-shrink-0">
                 <button onClick={() => startEdit(item)} className="text-xs font-semibold" style={{ color: '#3182f6' }}>수정</button>
-                <button onClick={() => del(item.id!)} className="text-xs font-semibold" style={{ color: '#e84040' }}>삭제</button>
+                <button onClick={() => setConfirmId(item.id!)} className="text-xs font-semibold" style={{ color: '#e84040' }}>삭제</button>
               </div>
             </div>
           </div>
@@ -205,6 +242,14 @@ export default function ChecklistPage() {
           </div>
         </div>
       )}
+
+      {/* 삭제 확인 다이얼로그 */}
+      <ConfirmDialog
+        open={confirmId !== null}
+        message="이 체크리스트 항목을 삭제할까요?"
+        onConfirm={doDelete}
+        onCancel={() => setConfirmId(null)}
+      />
     </div>
   )
 }

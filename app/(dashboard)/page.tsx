@@ -12,14 +12,37 @@ export default function DashboardPage() {
   const [recent, setRecent] = useState<Expense[]>([])
   const [year, setYear] = useState(new Date().getFullYear())
   const [month, setMonth] = useState(new Date().getMonth() + 1)
+  const [error, setError] = useState<string | null>(null)
   const sb = createClient()
 
   useEffect(() => {
     const ms = `${year}-${String(month).padStart(2,'0')}-01`
     const me = month < 12 ? `${year}-${String(month+1).padStart(2,'0')}-01` : `${year+1}-01-01`
-    sb.from('expenses').select('amount_usd,amount_krw,category,expense_date,name,paid_by').gte('expense_date', ms).lt('expense_date', me).then(({ data }) => setExpenses((data || []) as Expense[]))
-    sb.from('budget_items').select('*').then(({ data }) => setBudget((data || []) as BudgetItem[]))
-    sb.from('expenses').select('expense_date,name,category,amount_usd,amount_krw,paid_by').order('expense_date', { ascending: false }).limit(5).then(({ data }) => setRecent((data || []) as Expense[]))
+
+    sb.from('expenses')
+      .select('amount_usd,amount_krw,category,expense_date,name,paid_by')
+      .gte('expense_date', ms)
+      .lt('expense_date', me)
+      .then(({ data, error: err }) => {
+        if (err) { setError('지출 데이터를 불러오는 데 실패했어요.'); return }
+        setExpenses((data || []) as Expense[])
+      })
+
+    sb.from('budget_items')
+      .select('*')
+      .then(({ data, error: err }) => {
+        if (err) { setError('예산 데이터를 불러오는 데 실패했어요.'); return }
+        setBudget((data || []) as BudgetItem[])
+      })
+
+    sb.from('expenses')
+      .select('expense_date,name,category,amount_usd,amount_krw,paid_by')
+      .order('expense_date', { ascending: false })
+      .limit(5)
+      .then(({ data, error: err }) => {
+        if (err) { setError('최근 지출을 불러오는 데 실패했어요.'); return }
+        setRecent((data || []) as Expense[])
+      })
   }, [year, month])
 
   const totalSpent = expenses.reduce((s, e) => s + (e.amount_usd || 0), 0)
@@ -42,6 +65,16 @@ export default function DashboardPage() {
 
   return (
     <div className="px-4 py-5 space-y-4">
+
+      {/* 에러 배너 */}
+      {error && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-xl"
+          style={{ background: '#fff0f0', border: '1px solid #fecaca' }}>
+          <span style={{ color: '#e84040', fontSize: 14 }}>⚠️</span>
+          <p className="text-sm flex-1" style={{ color: '#b91c1c' }}>{error}</p>
+          <button onClick={() => setError(null)} className="text-xs font-bold" style={{ color: '#b91c1c' }}>✕</button>
+        </div>
+      )}
 
       {/* 납부 임박 알림 */}
       {dueSoon.length > 0 && (

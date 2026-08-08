@@ -2,6 +2,7 @@
 import { useEffect, useState } from 'react'
 import { createClient, fmtUsd, fmtKrw, usdToKrw } from '@/lib/supabase'
 import { BudgetItem } from '@/lib/types'
+import ConfirmDialog from '@/components/ConfirmDialog'
 
 const CYCLES = ['매월', '학기별', '연간', '일회성']
 const EMPTY: Partial<BudgetItem> = { name: '', category: '주거', cycle: '매월', amount_usd: 0 }
@@ -17,10 +18,17 @@ export default function BudgetPage() {
   const [showForm, setShowForm] = useState(false)
   const [loading, setLoading] = useState(false)
   const [filterCycle, setFilterCycle] = useState('전체')
+  const [error, setError] = useState<string | null>(null)
+  const [confirmId, setConfirmId] = useState<string | null>(null)
 
   async function load() {
-    const { data } = await sb.from('budget_items').select('*').order('cycle').order('amount_usd', { ascending: false })
-    setRows((data || []) as BudgetItem[])
+    try {
+      const { data, error: err } = await sb.from('budget_items').select('*').order('cycle').order('amount_usd', { ascending: false })
+      if (err) throw err
+      setRows((data || []) as BudgetItem[])
+    } catch {
+      setError('예산 목록을 불러오는 데 실패했어요.')
+    }
   }
 
   useEffect(() => { load() }, [])
@@ -28,23 +36,37 @@ export default function BudgetPage() {
   async function save() {
     if (!form.name || !form.amount_usd) return
     setLoading(true)
-    const payload = { ...form, amount_krw: usdToKrw(form.amount_usd || 0) }
-    if (editId) {
-      await sb.from('budget_items').update(payload).eq('id', editId)
-    } else {
-      await sb.from('budget_items').insert(payload)
+    try {
+      const payload = { ...form, amount_krw: usdToKrw(form.amount_usd || 0) }
+      if (editId) {
+        const { error: err } = await sb.from('budget_items').update(payload).eq('id', editId)
+        if (err) throw err
+      } else {
+        const { error: err } = await sb.from('budget_items').insert(payload)
+        if (err) throw err
+      }
+      setShowForm(false)
+      setEditId(null)
+      setForm(EMPTY)
+      await load()
+    } catch {
+      setError('저장에 실패했어요. 다시 시도해 주세요.')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
-    setShowForm(false)
-    setEditId(null)
-    setForm(EMPTY)
-    load()
   }
 
-  async function del(id: string) {
-    if (!confirm('삭제할까요?')) return
-    await sb.from('budget_items').delete().eq('id', id)
-    load()
+  async function doDelete() {
+    if (!confirmId) return
+    try {
+      const { error: err } = await sb.from('budget_items').delete().eq('id', confirmId)
+      if (err) throw err
+      await load()
+    } catch {
+      setError('삭제에 실패했어요. 다시 시도해 주세요.')
+    } finally {
+      setConfirmId(null)
+    }
   }
 
   function startEdit(b: BudgetItem) { setForm(b); setEditId(b.id!); setShowForm(true) }
@@ -58,6 +80,16 @@ export default function BudgetPage() {
 
   return (
     <div className="px-4 py-5 space-y-4">
+
+      {/* 에러 배너 */}
+      {error && (
+        <div className="flex items-center gap-2 px-4 py-3 rounded-xl"
+          style={{ background: '#fff0f0', border: '1px solid #fecaca' }}>
+          <span style={{ color: '#e84040', fontSize: 14 }}>⚠️</span>
+          <p className="text-sm flex-1" style={{ color: '#b91c1c' }}>{error}</p>
+          <button onClick={() => setError(null)} className="text-xs font-bold" style={{ color: '#b91c1c' }}>✕</button>
+        </div>
+      )}
 
       {/* 상단 */}
       <div className="flex justify-between items-center">
@@ -136,7 +168,7 @@ export default function BudgetPage() {
             </div>
             <div className="flex gap-3 mt-3 pt-3 border-t border-gray-100">
               <button onClick={() => startEdit(b)} className="text-xs font-semibold" style={{ color: '#3182f6' }}>수정</button>
-              <button onClick={() => del(b.id!)} className="text-xs font-semibold" style={{ color: '#e84040' }}>삭제</button>
+              <button onClick={() => setConfirmId(b.id!)} className="text-xs font-semibold" style={{ color: '#e84040' }}>삭제</button>
             </div>
           </div>
         ))}
@@ -198,6 +230,14 @@ export default function BudgetPage() {
           </div>
         </div>
       )}
+
+      {/* 삭제 확인 다이얼로그 */}
+      <ConfirmDialog
+        open={confirmId !== null}
+        message="이 예산 항목을 삭제할까요?"
+        onConfirm={doDelete}
+        onCancel={() => setConfirmId(null)}
+      />
     </div>
   )
 }
